@@ -2,18 +2,21 @@ name: Laygraphs Weekday Bot
 
 on:
   schedule:
-    - cron: "0 14 * * 1-5"  # Runs at 9 AM EST (14:00 UTC) Monday-Friday
-  workflow_dispatch:  # Allows manual run
+    # Runs at 9:00 AM Eastern (14:00 UTC) Monday–Friday
+    - cron: "0 14 * * 1-5"
+  workflow_dispatch: {}  # Allows manual runs
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -22,6 +25,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Auth sanity check (v2)
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+          API_SECRET: ${{ secrets.API_SECRET }}
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          ACCESS_SECRET: ${{ secrets.ACCESS_SECRET }}
+        run: |
+          python - <<'PY'
+          import os, tweepy
+          client = tweepy.Client(
+              consumer_key=os.getenv("API_KEY"),
+              consumer_secret=os.getenv("API_SECRET"),
+              access_token=os.getenv("ACCESS_TOKEN"),
+              access_token_secret=os.getenv("ACCESS_SECRET"),
+          )
+          me = client.get_me()
+          print("Authenticated as:", me.data.username if me and me.data else "UNKNOWN")
+          PY
+
       - name: Run bot
         env:
           API_KEY: ${{ secrets.API_KEY }}
@@ -29,4 +51,6 @@ jobs:
           ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
           ACCESS_SECRET: ${{ secrets.ACCESS_SECRET }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # For CI tests, cap jitter so the job doesn't wait 15 minutes.
+          JITTER_MAX: "5"
         run: python bot.py
