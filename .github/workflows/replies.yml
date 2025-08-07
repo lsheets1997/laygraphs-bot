@@ -1,0 +1,38 @@
+name: Laygraphs Replies (Weekdays)
+
+on:
+  schedule:
+    - cron: "*/5 * * * 1-5"   # every 5 minutes, Mon–Fri (UTC)
+  workflow_dispatch: {}
+
+jobs:
+  reply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run reply bot
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+          API_SECRET: ${{ secrets.API_SECRET }}
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          ACCESS_SECRET: ${{ secrets.ACCESS_SECRET }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # Speedy CI test defaults:
+          DRY_RUN: "1"          # set to "0" to actually reply
+          JITTER_MAX: "3"
+          FRESH_WINDOW_MIN: "20"
+          SCORE_THRESHOLD: "300"
+        run: python reply_bot.py
